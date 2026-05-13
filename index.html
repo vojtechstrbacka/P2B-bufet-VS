@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Objednávka školního bufetu</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f7fb;
+}
+h1 {
+  text-align: center;
+  background: #2a72d4;
+  color: white;
+  padding: 20px;
+}
+.container {
+  width: 90%;
+  max-width: 500px;
+  margin: 30px auto;
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+}
+.item {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0;
+  font-size: 18px;
+}
+input[type="number"] {
+  width: 70px;
+  text-align: center;
+}
+#celkem, #pocet {
+  text-align: center;
+  font-size: 22px;
+  margin-top: 15px;
+  font-weight: bold;
+  color: #2a72d4;
+}
+button {
+  width: 100%;
+  padding: 15px;
+  margin-top: 30px;
+  font-size: 24px;
+  background: #ff6b35;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+button:hover {
+  background: #e85a28;
+}
+</style>
+</head>
+
+<body>
+
+<h1>SŠ Kostka – OBJEDNÁVKY BUFET</h1>
+
+<div class="container">
+  <div id="items"></div>
+
+  <div id="celkem">Celková cena: 0 Kč</div>
+  <div id="pocet">Počet kusů: 0</div>
+
+  <button onclick="odeslatObjednavku()">ODESLAT OBJEDNÁVKU</button>
+</div>
+
+<script>
+
+let items = [];
+
+// ✅ načítání CSV
+async function loadCSV() {
+  try {
+    const response = await fetch("data_bufet.csv?t=" + Date.now());
+    if (!response.ok) {
+      throw new Error("Soubor nebyl nalezen");
+    }
+
+    const text = await response.text();
+    parseCSV(text);
+    renderItems();
+
+  } catch (err) {
+    console.error(err);
+    alert("Chyba načítání CSV.");
+  }
+}
+
+// ✅ parsování CSV (přeskočení hlavičky)
+function parseCSV(text) {
+  items = [];
+
+  const lines = text.split("\n");
+
+  // ⬇️ přeskočíme první řádek (hlavičku)
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    if (!line) continue;
+
+    const [nazev, cena] = line.split(";");
+
+    if (nazev && cena) {
+      items.push({
+        nazev: nazev.trim(),
+        cena: parseFloat(cena.replace(",", ".")),
+        mnozstvi: 0
+      });
+    }
+  }
+}
+
+// ✅ vykreslení
+function renderItems() {
+  const container = document.getElementById("items");
+  container.innerHTML = "";
+
+  items.forEach((item, index) => {
+
+    const div = document.createElement("div");
+    div.className = "item";
+
+    div.innerHTML = `
+      <span>${item.nazev} (${item.cena} Kč)</span>
+      <input type="number" min="0" value="0"
+        onchange="updateItem(${index}, this.value)">
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+// ✅ změna množství
+function updateItem(index, value) {
+  items[index].mnozstvi = parseInt(value) || 0;
+  updateSummary();
+}
+
+// ✅ přepočet
+function updateSummary() {
+  let celkem = 0;
+  let pocet = 0;
+
+  items.forEach(item => {
+    celkem += item.cena * item.mnozstvi;
+    pocet += item.mnozstvi;
+  });
+
+  document.getElementById("celkem").innerText =
+    "Celková cena: " + celkem.toFixed(2) + " Kč";
+
+  document.getElementById("pocet").innerText =
+    "Počet kusů: " + pocet;
+}
+
+// ✅ odeslání
+function odeslatObjednavku() {
+  const objednavka = items
+    .filter(item => item.mnozstvi > 0)
+    .map(item => `${item.nazev}: ${item.mnozstvi} ks`);
+
+  if (objednavka.length === 0) {
+    alert("Nevybral jsi žádné položky!");
+    return;
+  }
+
+  alert("Objednávka:\n\n" + objednavka.join("\n"));
+}
+
+// start
+loadCSV();
+
+</script>
+
+</body>
+</html>
+``
